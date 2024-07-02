@@ -1,4 +1,5 @@
 from pandas import read_pickle as rp
+from pandas import to_pickle as tp
 from yfinance import Ticker
 import numpy as np
 from csv import reader
@@ -66,7 +67,7 @@ def download_tables(stock_list = read_symbols_csv()):
                                     period='60d',  # historical period, can use start and end
                                     auto_adjust=False, # new as of 1/23/24
                                    )
-        stock_1h_df.to_pickle(f'./data/{item[0]}_1h_df.pkl')
+        stock_1h_df.tp(f'./data/{item[0]}_1h_df.pkl')
         
         ctn += 1
     
@@ -75,7 +76,7 @@ def download_tables(stock_list = read_symbols_csv()):
     return print(f'Start time: {start_time}\nDownloaded {ctn} max daily and hourly stock data\nEnd Time: {end_time}')
 
 
-def candle_parts_pcts(o, c, pc, h, l):
+def candle_parts_pcts(o, c, h, l):
     full = h - l
     body = abs(o - c)
     if o > c:
@@ -85,6 +86,16 @@ def candle_parts_pcts(o, c, pc, h, l):
         top_wick = h - c
         bottom_wick = o - l
     return top_wick / full, body / full, bottom_wick / full
+
+
+def gap_up_down_pct(o, pc):
+    if o > pc:
+        return (o - pc) / pc
+    else if o = pc:
+        return 0
+    else:
+        return (pc - o) / pc
+    
 
 def load_transform_tables(stock_list = read_symbols_csv()):
     
@@ -96,7 +107,16 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         
         #get max 1 day data
         stock_1d_df = rp(f'./data/{item[0]}_1d_df.pkl')
-                
+        
+        #update 1 day table
+        stock_1d_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_1d_df.apply(lambda row: candle_parts_pcts(row['open'], row['close'], row['high'],  row['low']), axis=1, result_type='expand')
+        
+        stock_1d_df['pc'] = stock_1d_df['close'].shift(1).copy()
+        
+        stock_1d_df['pct_gap_up_down'] = stock_1d_df.apply(lambda row: gap_up_down_pct(row['open'], row['pc']), axis=1, result_type='expand')
+        
+        
+                                                          
         
         #get max 1 hour data
         stock_1h_df = stock.history(interval = '1h',  # time spacing interval
