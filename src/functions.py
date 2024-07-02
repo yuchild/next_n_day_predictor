@@ -75,6 +75,17 @@ def download_tables(stock_list = read_symbols_csv()):
     return print(f'Start time: {start_time}\nDownloaded {ctn} max daily and hourly stock data\nEnd Time: {end_time}')
 
 
+def candle_parts_pcts(o, c, pc, h, l):
+    full = h - l
+    body = abs(o - c)
+    if o > c:
+        top_wick = h - o
+        bottom_wick = c - l
+    else:
+        top_wick = h - c
+        bottom_wick = o - l
+    return top_wick / full, body / full, bottom_wick / full
+
 def load_transform_tables(stock_list = read_symbols_csv()):
     
     start_time = current_time()
@@ -85,9 +96,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         
         #get max 1 day data
         stock_1d_df = rp(f'./data/{item[0]}_1d_df.pkl')
-        
-        
-        
+                
         
         #get max 1 hour data
         stock_1h_df = stock.history(interval = '1h',  # time spacing interval
