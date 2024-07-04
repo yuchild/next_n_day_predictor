@@ -195,7 +195,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'Adj Close',
                      'direction',
                     ]
-                   ].dropna().to_pickle(f'./models/{item[0]}_1d_model_df.pkl')
+                   ].to_pickle(f'./models/{item[0]}_1d_model_df.pkl')
         
         ######################
         #transform 1 day data#
@@ -203,7 +203,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         stock_1h_df = rp(f'./data/{item[0]}_1h_df.pkl')
         
         #update 1 day table: candle parts %'s
-        stock_1h_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_1d_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
+        stock_1h_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_1h_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
         
         #stdev of adjusted close
         stock_1h_df['top_stdev21'] = stock_1h_df['pct_top_wick'].rolling(window=21).std().copy() 
@@ -258,7 +258,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'Adj Close',
                      'direction',
                     ]
-                   ].dropna().to_pickle(f'./models/{item[0]}_1h_model_df.pkl')
+                   ].to_pickle(f'./models/{item[0]}_1h_model_df.pkl')
         
         ctn += 1
     
