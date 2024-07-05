@@ -29,12 +29,10 @@ def candle_parts_pcts(o, c, h, l):
 
 # previous close and open gap % of pervious candle size
 def gap_up_down_pct(o, pc, ph, pl):
-    if o > pc:
-        return (o - pc) / (ph - pl)
-    elif o == pc:
+    if o == pc:
         return 0
     else:
-        return (pc - o) / (ph - pl)
+        return (o - pc) / (ph - pl)
     
     
 # z-score calculation
@@ -109,15 +107,35 @@ def download_tables(stock_list = read_symbols_csv()):
                                     interval = '1d',  # time spacing interval
                                     period='max',  # historical period, can adjust start and end
                                     auto_adjust=False, # new as of 1/23/24
+                                    prepost=True, # include pre market and post market data
                                    )
         stock_1d_df.to_pickle(f'./data/{item[0]}_1d_df.pkl')
         
         #get max 1 hour data
         stock_1h_df = stock.history(interval = '1h',  # time spacing interval
-                                    period='60d',  # historical period, can use start and end
+                                    period='max',  # historical period, can use start and end
                                     auto_adjust=False, # new as of 1/23/24
+                                    prepost=True, # include pre market and post market data
                                    )
         stock_1h_df.to_pickle(f'./data/{item[0]}_1h_df.pkl')
+        
+        
+        #get max 1/2 hour data
+        stock_1h_df = stock.history(interval = '30m',  # time spacing interval
+                                    period='max',  # historical period, can use start and end
+                                    auto_adjust=False, # new as of 1/23/24
+                                    prepost=True, # include pre market and post market data
+                                   )
+        stock_1h_df.to_pickle(f'./data/{item[0]}_30m_df.pkl')
+        
+        
+        #get max 15m data
+        stock_1h_df = stock.history(interval = '15m',  # time spacing interval
+                                    period='max',  # historical period, can use start and end
+                                    auto_adjust=False, # new as of 1/23/24
+                                    prepost=True, # include pre market and post market data
+                                   )
+        stock_1h_df.to_pickle(f'./data/{item[0]}_15m_df.pkl')
         
         ctn += 1
     
@@ -189,6 +207,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'top_z21',
                      'body_z21',
                      'bottom_z21',
+                     'pct_gap_up_down',
                      'ac_z5',
                      'ac_z8',
                      'ac_z13',
@@ -252,6 +271,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'top_z21',
                      'body_z21',
                      'bottom_z21',
+                     'pct_gap_up_down',
                      'ac_z5',
                      'ac_z8',
                      'ac_z13',
@@ -265,3 +285,14 @@ def load_transform_tables(stock_list = read_symbols_csv()):
     end_time = current_time()
         
     return print(f'Start time: {start_time}\nDownloaded {ctn} max daily and hourly stock data\nEnd Time: {end_time}')
+
+
+##########################################
+# functions for split train test predict #
+##########################################
+
+#
+
+
+
+
