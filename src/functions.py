@@ -5,7 +5,7 @@ from csv import reader
 from os import path
 from datetime import date, datetime
 from math import ceil
-from pykalman import KalmanFilter as kf
+from pykalman import KalmanFilter
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -158,8 +158,25 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         ######################
         stock_1d_df = rp(f'./data/{item[0]}_1d_df.pkl')
         
-        # kalmen filtering
+        # Kalman filtering (noise reduction algorithm) 
+        kf = KalmanFilter(transition_matrices = [1],
+                          observation_matrices = [1],
+                          initial_state_mean = 0,
+                          initial_state_covariance = 1,
+                          observation_covariance=1,
+                          transition_covariance=0.01
+                         )
         
+        state_means, _ = kf.filter(stock_1d_df['Close'].values)
+        state_means = pd.Series(state_means.flatten(), index==stock_1d_df.index)
+        stock_1d_df['kma'] = state_means
+        stock_1d_df['sma40'] = stock_1d_df['Close'].rolling(window=40).mean().copy()
+        stock_1d_df['kma_sma40_diff'] = stock_1d_df['kma'].copy() - stock_1d_df['sma40'].copy()
+        stock_1d_df['kma_sma40_diff_stdev21'] = stock_1d_df['kma_sma40_diff'].rolling(window=21).std().copy()
+        stock_1d_df['kma_sma40_diff_mu21'] = stock_1d_df['kma_sma40_diff'].rolling(window=21).mean().copy()
+        
+        # Calculate Kalman Filter vs SMA40 difference z-score
+        stock_1d_df['kma_sma40_z21'] = stock_1d_df.apply(lambda row: zscore(row['kma'], row['kma_sma40_diff_mu21'], row['kma_sma40_diff_stdev21']), axis=1, result_type='expand').copy()
         
         #update 1 day table: candle parts %'s
         stock_1d_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_1d_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
