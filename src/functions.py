@@ -92,6 +92,19 @@ def current_time():
     return f'{today} {now}'
     
 
+###################################
+# class for table transformations #
+###################################
+
+
+
+
+
+
+
+
+
+
 # download tables from yfinance (yahoo finance)
 def download_tables(stock_list = read_symbols_csv()):
     
