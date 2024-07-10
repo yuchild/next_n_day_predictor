@@ -1,4 +1,5 @@
 from pandas import read_pickle as rp
+import pandas as pd
 from yfinance import Ticker
 import numpy as np
 from csv import reader
@@ -142,7 +143,7 @@ def download_tables(stock_list = read_symbols_csv()):
     
     end_time = current_time()
         
-    return print(f'Start time: {start_time}\nDownloaded {ctn} max daily and hourly stock data\nEnd Time: {end_time}')
+    return print(f'Start time: {start_time}\nDownloaded {ctn} max daily, hourly, 30m, and 15m stock data\nEnd Time: {end_time}')
 
 
 # load downloaded tables, transform for machine learning
@@ -168,15 +169,15 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                          )
         
         state_means, _ = kf.filter(stock_1d_df['Close'].values)
-        state_means = pd.Series(state_means.flatten(), index==stock_1d_df.index)
+        state_means = pd.Series(state_means.flatten(), index=stock_1d_df.index)
         stock_1d_df['kma'] = state_means
         stock_1d_df['sma40'] = stock_1d_df['Close'].rolling(window=40).mean().copy()
-        stock_1d_df['kma_sma40_diff'] = stock_1d_df['kma'].copy() - stock_1d_df['sma40'].copy()
+        stock_1d_df['kma_sma40_diff'] = (stock_1d_df['kma'] - stock_1d_df['sma40']).copy()
         stock_1d_df['kma_sma40_diff_stdev21'] = stock_1d_df['kma_sma40_diff'].rolling(window=21).std().copy()
         stock_1d_df['kma_sma40_diff_mu21'] = stock_1d_df['kma_sma40_diff'].rolling(window=21).mean().copy()
         
         # Calculate Kalman Filter vs SMA40 difference z-score
-        stock_1d_df['kma_sma40_z21'] = stock_1d_df.apply(lambda row: zscore(row['kma'], row['kma_sma40_diff_mu21'], row['kma_sma40_diff_stdev21']), axis=1, result_type='expand').copy()
+        stock_1d_df['kma_sma40_diff_z21'] = stock_1d_df.apply(lambda row: zscore(row['kma_sma40_diff'], row['kma_sma40_diff_mu21'], row['kma_sma40_diff_stdev21']), axis=1, result_type='expand').copy()
         
         #update 1 day table: candle parts %'s
         stock_1d_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_1d_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
@@ -222,9 +223,9 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         stock_1d_df['direction'] = stock_1d_df.apply(lambda row: direction(row['Adj Close'], row['adj_close_up1']), axis=1, result_type='expand').copy() 
         
         #save 1d file for model building
-        stock_1d_df[['pct_top_wick', 
-                     'pct_body', 
-                     'pct_bottom_wick',
+        stock_1d_df[['top_z21', 
+                     'body_z21', 
+                     'bottom_z21',
                      'top_z21',
                      'body_z21',
                      'bottom_z21',
@@ -232,6 +233,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'ac_z5',
                      'ac_z8',
                      'ac_z13',
+                     'kma_sma40_diff_z21',
                      'Adj Close',
                      'direction',
                     ]
@@ -242,6 +244,26 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         #transform 1 hour data#
         #######################
         stock_1h_df = rp(f'./data/{item[0]}_1h_df.pkl')
+        
+        # Kalman filtering (noise reduction algorithm) 
+        kf = KalmanFilter(transition_matrices = [1],
+                          observation_matrices = [1],
+                          initial_state_mean = 0,
+                          initial_state_covariance = 1,
+                          observation_covariance=1,
+                          transition_covariance=0.01
+                         )
+        
+        state_means, _ = kf.filter(stock_1h_df['Close'].values)
+        state_means = pd.Series(state_means.flatten(), index=stock_1h_df.index)
+        stock_1h_df['kma'] = state_means
+        stock_1h_df['sma40'] = stock_1h_df['Close'].rolling(window=40).mean().copy()
+        stock_1h_df['kma_sma40_diff'] = (stock_1h_df['kma'] - stock_1h_df['sma40']).copy()
+        stock_1h_df['kma_sma40_diff_stdev21'] = stock_1h_df['kma_sma40_diff'].rolling(window=21).std().copy()
+        stock_1h_df['kma_sma40_diff_mu21'] = stock_1h_df['kma_sma40_diff'].rolling(window=21).mean().copy()
+        
+        # Calculate Kalman Filter vs SMA40 difference z-score
+        stock_1h_df['kma_sma40_diff_z21'] = stock_1h_df.apply(lambda row: zscore(row['kma_sma40_diff'], row['kma_sma40_diff_mu21'], row['kma_sma40_diff_stdev21']), axis=1, result_type='expand').copy()
         
         #update 1 day table: candle parts %'s
         stock_1h_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_1h_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
@@ -287,9 +309,9 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         stock_1h_df['direction'] = stock_1h_df.apply(lambda row: direction(row['Adj Close'], row['adj_close_up1']), axis=1, result_type='expand').copy() 
         
         #save 1h file for model building
-        stock_1h_df[['pct_top_wick', 
-                     'pct_body', 
-                     'pct_bottom_wick',
+        stock_1h_df[['top_z21', 
+                     'body_z21', 
+                     'bottom_z21',
                      'top_z21',
                      'body_z21',
                      'bottom_z21',
@@ -297,6 +319,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'ac_z5',
                      'ac_z8',
                      'ac_z13',
+                     'kma_sma40_diff_z21',
                      'Adj Close',
                      'direction',
                     ]
@@ -307,6 +330,26 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         #transform 30 min data#
         #######################
         stock_30m_df = rp(f'./data/{item[0]}_30m_df.pkl')
+        
+        # Kalman filtering (noise reduction algorithm) 
+        kf = KalmanFilter(transition_matrices = [1],
+                          observation_matrices = [1],
+                          initial_state_mean = 0,
+                          initial_state_covariance = 1,
+                          observation_covariance=1,
+                          transition_covariance=0.01
+                         )
+        
+        state_means, _ = kf.filter(stock_30m_df['Close'].values)
+        state_means = pd.Series(state_means.flatten(), index=stock_30m_df.index)
+        stock_30m_df['kma'] = state_means
+        stock_30m_df['sma40'] = stock_30m_df['Close'].rolling(window=40).mean().copy()
+        stock_30m_df['kma_sma40_diff'] = (stock_30m_df['kma'] - stock_30m_df['sma40']).copy()
+        stock_30m_df['kma_sma40_diff_stdev21'] = stock_30m_df['kma_sma40_diff'].rolling(window=21).std().copy()
+        stock_30m_df['kma_sma40_diff_mu21'] = stock_30m_df['kma_sma40_diff'].rolling(window=21).mean().copy()
+        
+        # Calculate Kalman Filter vs SMA40 difference z-score
+        stock_30m_df['kma_sma40_diff_z21'] = stock_30m_df.apply(lambda row: zscore(row['kma_sma40_diff'], row['kma_sma40_diff_mu21'], row['kma_sma40_diff_stdev21']), axis=1, result_type='expand').copy()
         
         #update 1 day table: candle parts %'s
         stock_30m_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_30m_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
@@ -352,9 +395,9 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         stock_30m_df['direction'] = stock_30m_df.apply(lambda row: direction(row['Adj Close'], row['adj_close_up1']), axis=1, result_type='expand').copy() 
         
         #save 30 min file for model building
-        stock_30m_df[['pct_top_wick', 
-                     'pct_body', 
-                     'pct_bottom_wick',
+        stock_30m_df[['top_z21', 
+                     'body_z21', 
+                     'bottom_z21',
                      'top_z21',
                      'body_z21',
                      'bottom_z21',
@@ -362,6 +405,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'ac_z5',
                      'ac_z8',
                      'ac_z13',
+                     'kma_sma40_diff_z21',
                      'Adj Close',
                      'direction',
                     ]
@@ -372,6 +416,26 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         #transform 15 min data#
         #######################
         stock_15m_df = rp(f'./data/{item[0]}_15m_df.pkl')
+        
+        # Kalman filtering (noise reduction algorithm) 
+        kf = KalmanFilter(transition_matrices = [1],
+                          observation_matrices = [1],
+                          initial_state_mean = 0,
+                          initial_state_covariance = 1,
+                          observation_covariance=1,
+                          transition_covariance=0.01
+                         )
+        
+        state_means, _ = kf.filter(stock_15m_df['Close'].values)
+        state_means = pd.Series(state_means.flatten(), index=stock_15m_df.index)
+        stock_15m_df['kma'] = state_means
+        stock_15m_df['sma40'] = stock_15m_df['Close'].rolling(window=40).mean().copy()
+        stock_15m_df['kma_sma40_diff'] = (stock_15m_df['kma'] - stock_15m_df['sma40']).copy()
+        stock_15m_df['kma_sma40_diff_stdev21'] = stock_15m_df['kma_sma40_diff'].rolling(window=21).std().copy()
+        stock_15m_df['kma_sma40_diff_mu21'] = stock_15m_df['kma_sma40_diff'].rolling(window=21).mean().copy()
+        
+        # Calculate Kalman Filter vs SMA40 difference z-score
+        stock_15m_df['kma_sma40_diff_z21'] = stock_15m_df.apply(lambda row: zscore(row['kma_sma40_diff'], row['kma_sma40_diff_mu21'], row['kma_sma40_diff_stdev21']), axis=1, result_type='expand').copy()
         
         #update 1 day table: candle parts %'s
         stock_15m_df[['pct_top_wick', 'pct_body', 'pct_bottom_wick']] = stock_15m_df.apply(lambda row: candle_parts_pcts(row['Open'], row['Close'], row['High'],  row['Low']), axis=1, result_type='expand').copy()
@@ -417,9 +481,9 @@ def load_transform_tables(stock_list = read_symbols_csv()):
         stock_15m_df['direction'] = stock_15m_df.apply(lambda row: direction(row['Adj Close'], row['adj_close_up1']), axis=1, result_type='expand').copy() 
         
         #save 15 min file for model building
-        stock_15m_df[['pct_top_wick', 
-                     'pct_body', 
-                     'pct_bottom_wick',
+        stock_15m_df[['top_z21', 
+                     'body_z21', 
+                     'bottom_z21',
                      'top_z21',
                      'body_z21',
                      'bottom_z21',
@@ -427,6 +491,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
                      'ac_z5',
                      'ac_z8',
                      'ac_z13',
+                     'kma_sma40_diff_z21',
                      'Adj Close',
                      'direction',
                     ]
@@ -436,7 +501,7 @@ def load_transform_tables(stock_list = read_symbols_csv()):
     
     end_time = current_time()
         
-    return print(f'Start time: {start_time}\nDownloaded {ctn} max daily and hourly stock data\nEnd Time: {end_time}')
+    return print(f'Start time: {start_time}\nDownloaded {ctn} max daily, hourly, 30m, and 15m stock data\nEnd Time: {end_time}')
 
 
 ##########################################
