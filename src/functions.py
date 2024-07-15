@@ -96,7 +96,8 @@ def current_time():
 # class for table transformations #
 ###################################
 
-
+class transforms:
+    ...
 
 
 
