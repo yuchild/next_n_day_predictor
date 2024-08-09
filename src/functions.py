@@ -154,6 +154,15 @@ class transforms:
         stock_df['pct_gap_up_down'] = stock_df.apply(lambda row: self.gap_up_down_pct(row['Open'], row['pc'], row['ph'], row['pl']), axis=1, result_type='expand').copy()
 
         # Standard deviation of adjusted close
+        stock_df['gap_stdev21'] = stock_df['pct_top_wick'].rolling(window=21).std().copy()
+
+        # Mean of adjusted close
+        stock_df['gap_mu21'] = stock_df['pct_top_wick'].rolling(window=21).mean().copy()
+
+        # Z-score of adjusted close
+        stock_df['gap_z21'] = stock_df.apply(lambda row: self.zscore(row['pct_gap_up_down'], row['gap_mu21'], row['gap_stdev21']), axis=1, result_type='expand').copy()
+        
+        # Standard deviation of adjusted close
         stock_df['ac_stdev5'] = stock_df['Adj Close'].rolling(window=5).std().copy()
         stock_df['ac_stdev8'] = stock_df['Adj Close'].rolling(window=8).std().copy()
         stock_df['ac_stdev13'] = stock_df['Adj Close'].rolling(window=13).std().copy()
@@ -174,7 +183,7 @@ class transforms:
 
         # Save file for model building
         stock_df[['top_z21', 'body_z21', 'bottom_z21', 'top_z21', 'body_z21', 'bottom_z21',
-                  'pct_gap_up_down', 'ac_z5', 'ac_z8', 'ac_z13', 'kma_sma40_diff_z21',
+                  'gap_z21', 'ac_z5', 'ac_z8', 'ac_z13', 'kma_sma40_diff_z21',
                   'Adj Close', 'direction']].to_pickle(f'./models/{stock}_{timeframe}_model_df.pkl')
 
     def load_data(self, stock, timeframe):
