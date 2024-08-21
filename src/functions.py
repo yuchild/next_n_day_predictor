@@ -242,7 +242,7 @@ def download_tables(stock_list = read_symbols_csv()):
         
         #get max 1 hour data
         stock_1h_df = stock.history(interval = '1h',  # time spacing interval
-                                    period='6mo',  # historical period, can use start and end 730d 
+                                    period='2y',  # historical period, can use start and end 730d 
                                     auto_adjust=False, # new as of 1/23/24
                                     prepost=True, # include pre market and post market data
                                    )
@@ -251,20 +251,20 @@ def download_tables(stock_list = read_symbols_csv()):
         
         #get max 30 minutes data
         stock_30m_df = stock.history(interval = '30m',  # time spacing interval
-                                    period='3mo',  # historical period, can use start and end
+                                    period='1mo',  # historical period, can use start and end
                                     auto_adjust=False, # new as of 1/23/24
                                     prepost=True, # include pre market and post market data
                                    )
         stock_30m_df.to_pickle(f'./data/{item[0]}_30m_df.pkl')
         
         
-        #get max 5 minutes data
-        stock_5m_df = stock.history(interval = '15m',  # time spacing interval
-                                    period='max',  # historical period, can use start and end 60d
+        #get max 15 minutes data
+        stock_15m_df = stock.history(interval = '15m',  # time spacing interval
+                                    period='1mo',  # historical period, can use start and end 60d
                                     auto_adjust=False, # new as of 1/23/24
                                     prepost=True, # include pre market and post market data
                                    )
-        stock_5m_df.to_pickle(f'./data/{item[0]}_5m_df.pkl')
+        stock_15m_df.to_pickle(f'./data/{item[0]}_15m_df.pkl')
         
         ctn += 1
     
@@ -273,7 +273,7 @@ def download_tables(stock_list = read_symbols_csv()):
     return print(f'Start time: {start_time}\nDownloaded {ctn} max daily, hourly, 30m, and 15m stock data\nEnd Time: {end_time}')
 
 
-# load downloaded tables, transform for machine learning
+# load downloaded tables, transform for machine learning old way
 def load_transform_tables(stock_list = read_symbols_csv()):
     
     start_time = current_time()
