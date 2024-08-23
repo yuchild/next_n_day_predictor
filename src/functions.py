@@ -48,7 +48,7 @@ def direction(today, tomorrow):
     if pct_change > 0.0075:
         return 1
     elif pct_change < -0.0075:
-        return -1
+        return 2
     else:
         return 0
     
