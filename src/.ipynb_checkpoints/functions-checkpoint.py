@@ -177,6 +177,13 @@ class transforms:
         stock_df['ac_z8'] = stock_df.apply(lambda row: self.zscore(row['Adj Close'], row['ac_mu8'], row['ac_stdev8']), axis=1, result_type='expand').copy()
         stock_df['ac_z13'] = stock_df.apply(lambda row: self.zscore(row['Adj Close'], row['ac_mu13'], row['ac_stdev13']), axis=1, result_type='expand').copy()
 
+        # month, day of week
+        # Assuming df is your DataFrame and it has a datetime index
+        stock_df['month'] = stock_df.index.month            # Extract the month
+        stock_df['day_of_week'] = stock_df.index.dayofweek  # Extract the day of the week (0=Monday, 6=Sunday)
+        stock_df['hour'] = stock_df.index.hour              # Extract the hour of the day
+
+
         # Target column: direction: -1, 0, 1
         stock_df['adj_close_up1'] = stock_df['Adj Close'].shift(-1).copy()
         stock_df['direction'] = stock_df.apply(lambda row: self.direction(row['Adj Close'], row['adj_close_up1']), axis=1, result_type='expand').copy()
@@ -184,7 +191,7 @@ class transforms:
         # Save file for model building
         stock_df[['top_z21', 'body_z21', 'bottom_z21', 'top_z21', 'body_z21', 'bottom_z21',
                   'gap_z21', 'ac_z5', 'ac_z8', 'ac_z13', 'kma_sma40_diff_z21',
-                  'Adj Close', 'direction']].to_pickle(f'./models/{stock}_{timeframe}_model_df.pkl')
+                  'Adj Close', 'month', 'day_of_week', 'hour', 'direction']].to_pickle(f'./models/{stock}_{timeframe}_model_df.pkl')
 
     def load_data(self, stock, timeframe):
         return pd.read_pickle(f'./data/{stock}_{timeframe}_df.pkl')
